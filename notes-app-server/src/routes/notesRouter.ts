@@ -1,7 +1,6 @@
 import { Response, Request, Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
-import { log } from "console";
 
 export const notesRouter: Router = Router();
 const prisma = new PrismaClient({ log: ["query"] }).$extends(withAccelerate());
@@ -114,8 +113,8 @@ notesRouter.patch("/:id", async (req, res) => {
     });
   }
 });
+
 notesRouter.delete("/:id", async (req, res) => {
-  
   let { id } = req.params;
   if(!id || isNaN(parseInt(id))) {
     res.status(400).send("Invalid id provided" );

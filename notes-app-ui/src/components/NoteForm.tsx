@@ -1,6 +1,7 @@
 import Note from "../types/Note";
 import axios from "axios";
 import React from "react";
+import apiAcces from "../dataAccess/apiAccess";
 
 interface NoteFormProps {
   title: string;
@@ -23,36 +24,30 @@ export default function NoteForm({
   setNotes,
   selectedNote,
   cancel,
-  update
+  update,
 }: NoteFormProps) {
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      const response = await axios(
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          url: 'http://localhost:3000/api/notes/',
-          data: {
-            title,
-            content
-          }
-        }
-      )
-      const newNote: Note = await response.data.note
-      setNotes([newNote, ...allNotes]);
-      setContent("");
-      setTitle("");
-    } catch (error) {
-      console.error(error);
-      
-    }
 
+    const newNote: {message: string, note: Note} = await apiAcces.addNote(title, content);
+    if (newNote.message === 'Note created successfully') {
+      //for debugging purposes
+      console.log(newNote.message); //log the message to console
+      alert(newNote.message);       //show the message in an alert box
+      //-----------------------
+      setNotes([...allNotes, newNote.note]);  //add the new note to the notes array
+      setTitle("");  //clear the title field
+      setContent(""); //clear the content field
+    } else {
+      console.error('Error creating note');
+      return;
+    }
   };
   return (
-    <form className="note-form" onSubmit={(e) => 
-      selectedNote ? update(e) : handleAddNote(e)}>
+    <form
+      className="note-form"
+      onSubmit={(e) => (selectedNote ? update(e) : handleAddNote(e))}
+    >
       <input
         placeholder="Note Title"
         required
@@ -67,14 +62,14 @@ export default function NoteForm({
         onChange={(e) => setContent(e.target.value)}
       ></textarea>
 
-      
-      
       {selectedNote ? (
         <div className="edit-buttons">
           <button id="btnUpdate">Save</button>
           <button onClick={cancel}>Cancel</button>
         </div>
-      ) : (<button id="btnAddNote">Add note</button>)}
+      ) : (
+        <button id="btnAddNote">Add note</button>
+      )}
     </form>
   );
 }

@@ -3,36 +3,31 @@ import "./App.css";
 // import notas from "./utils/db.json";
 import NoteForm from "./components/NoteForm";
 import Note from "./types/Note";
-import axios from "axios";
+import NoteList from "./components/NoteList";
+import apiAcces from "./dataAccess/apiAccess";
+
 
 const App = () => {
-  
   const [notes, setNotes] = useState<Note[]>([]);
-  
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+  }
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        
-        const data = await axios({
-          method: 'get',
-          url: 'http://localhost:3000/api/notes/'
-        })
-        const notes: Note[] = await data.data;
-        setNotes(notes)
-      } catch (error) {
-        console.log("Error fetching data: ", error);
-        
+    const allNotes = async () => {
+      const response: Note[] = (await apiAcces.fetchAllNotes()) as Note[];
+      if (response) {
+        setNotes(response);
+      } else {
+        setNotes([]);
       }
-    }
-    fetchData();
+    };
+    allNotes();
   }, []);
-
-  
 
   const handleSelectedNote = (note: Note) => {
     setSelectedNote(note);
@@ -44,62 +39,41 @@ const App = () => {
     e.preventDefault();
     if (!selectedNote) return;
 
-    try {
-      const response = await axios(
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          url: `http://localhost:3000/api/notes/${selectedNote.id}`,
-          data: {
-            title,
-            content
-          }
-        }
-      )
-      const updatedNote: Note = await response.data.note;
-      const updatedList = notes.map((note) => {
-        if (note.id === updatedNote.id) {
-          return updatedNote;
-        } else {
-          return note;
-        }
-      });
-      setNotes(updatedList);
-      setTitle("");
-      setContent("");
-      setSelectedNote(null);
-    } catch (error) {
-      console.error(error);
-      
+    const updatedNote: Note =
+      (await apiAcces.updateNote(selectedNote.id, title, content))
+    if (!updatedNote) {
+      console.error("Error updating the note");
+      return;
     }
-
+    const updatedList = notes.map((note) => {
+      if (note.id === updatedNote.id) {
+        return updatedNote;
+      } else {
+        return note;
+      }
+    });
+    setNotes(updatedList);
+    resetForm()
+    setSelectedNote(null);
   };
   const handleCancel = () => {
-    setTitle("");
-    setContent("");
+    resetForm()
     setSelectedNote(null);
   };
 
   const handleDelete = async (note: Note, e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
 
-    try {
-      await axios({
-        method: 'DELETE',
-        url: `http://localhost:3000/api/notes/${note.id}`
-
-      })
-      const updateList = notes.filter(noteItem => {
-        return noteItem.id !== note.id
-      })
-      setNotes(updateList);
-    } catch (error) {
-      console.error(error);
-      
-    }
+    const response = await apiAcces.deleteNote(note.id);
+    if ( response?.status === 204) alert("Note deleted successfully");
+    const updateList = notes.filter(noteElement => {
+      if ( noteElement.id !== note.id) {
+        return noteElement;
+      }
+    });
+    setNotes(updateList);
   };
 
-  
   return (
     <>
       <div className="app-container">
@@ -114,28 +88,11 @@ const App = () => {
           allNotes={notes}
           setNotes={setNotes}
         />
-        <div className="notes-grid">
-          {notes.map((note) => (
-            <div
-              className="note-item" key={note.id}
-              onClick={() => {
-                handleSelectedNote(note);
-              }}
-            >
-              <div className="notes-header">
-                <button
-                  onClick={(e) => {
-                    handleDelete(note, e)
-                  }}
-                >
-                  x
-                </button>
-              </div>
-              <h2>{note.title}</h2>
-              <p>{note.content}</p>
-            </div>
-          ))}
-        </div>
+        <NoteList
+          notes={notes}
+          handleSelectedNote={handleSelectedNote}
+          handleDelete={handleDelete}
+        />
       </div>
     </>
   );
